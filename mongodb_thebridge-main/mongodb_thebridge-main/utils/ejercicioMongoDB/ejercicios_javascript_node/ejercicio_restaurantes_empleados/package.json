@@ -1,0 +1,11 @@
+{
+  "name": "ejercicios-mongodb-node",
+  "private": true,
+  "scripts": {
+    "ej1": "node ejercicio1_bbdd_restaurante.js",
+    "ej2": "node ejercicio2_aggregate_empleados.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.12.0"
+  }
+}
