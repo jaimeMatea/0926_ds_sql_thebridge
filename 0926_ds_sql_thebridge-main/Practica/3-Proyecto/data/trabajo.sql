@@ -223,7 +223,7 @@ select * from Persona;
 
 
 ----------------CREACION TABLA E INSERCION EN TABLA CAMPUS-----------------------
-CREATE SEQUENCE IF NOT EXISTS campus_id_seq START 1;
+CREATE SEQUENCE IF NOT EXISTS campus_id_seq START 1
 CREATE TABLE IF NOT EXISTS Campus (
     id_campus VARCHAR(10) PRIMARY KEY
         DEFAULT ('c' || nextval('campus_id_seq')),
@@ -347,14 +347,14 @@ FROM (
     SELECT Campus, Promocion FROM clase_3
     UNION
     SELECT Campus, Promocion FROM clase_4
-) c_todas
+) clases
 LEFT JOIN Campus ca 
-    ON c_todas.Campus = ca.Campus
+    ON clases.Campus = ca.Campus
 LEFT JOIN Promocion p 
-    ON c_todas.Promocion = p.Promocion
+    ON clases.Promocion = p.Promocion
 LEFT JOIN claustro cl 
-    ON c_todas.Campus = cl.Campus 
-   AND c_todas.Promocion = cl.Promocion
+    ON clases.Campus = cl.Campus 
+   AND clases.Promocion = cl.Promocion
 LEFT JOIN Vertical v 
     ON cl.Vertical = v.Vertical
 LEFT JOIN Modalidad m 
@@ -459,6 +459,17 @@ JOIN Persona p
 JOIN Proyecto pro 
     ON pp.nombre_proyecto = pro.nombre_proyecto
 WHERE pp.nota IS NOT NULL AND pp.nota <> '';
+
+
+
+
+
+
+
+
+
+
+
 
 
 
