@@ -412,15 +412,10 @@ CREATE TABLE IF NOT EXISTS Proyecto (
 INSERT INTO Proyecto (nombre_proyecto, id_vertical)
 SELECT temp.nombre_proyecto, v.id_vertical
 FROM (
-    VALUES 
-        ('Proyecto_HLF'),
-        ('Proyecto_EDA'),
-        ('Proyecto_BBDD'),
-        ('Proyecto_ML'),
-        ('Proyecto_Deployment')
+    VALUES ('Proyecto_HLF'),('Proyecto_EDA'),('Proyecto_BBDD'),('Proyecto_ML'),('Proyecto_Deployment')
 ) AS temp(nombre_proyecto)
 LEFT JOIN Vertical v 
-    ON v.Vertical = 'Data Science'
+    ON v.Vertical = 'DS'
 ON CONFLICT (nombre_proyecto) DO NOTHING;
 
 select * from Proyecto;
@@ -464,6 +459,33 @@ JOIN Persona p
 JOIN Proyecto pro 
     ON pp.nombre_proyecto = pro.nombre_proyecto
 WHERE pp.nota IS NOT NULL AND pp.nota <> '';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
