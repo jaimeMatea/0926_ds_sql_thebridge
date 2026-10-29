@@ -302,37 +302,25 @@ CREATE SEQUENCE IF NOT EXISTS promocion_id_seq START 1;
 CREATE TABLE IF NOT EXISTS Promocion (
     id_promocion VARCHAR(10) PRIMARY KEY
         DEFAULT ('pr' || nextval('promocion_id_seq')),
-    Promocion VARCHAR(150) UNIQUE
+    Promocion VARCHAR(150) UNIQUE,
+    Fecha_comienzo DATE -- <--- Atributo movido aquí
 );
 
-INSERT INTO Promocion (Promocion)
-SELECT DISTINCT Promocion
-FROM claustro
+INSERT INTO Promocion (Promocion, Fecha_comienzo)
+SELECT Promocion, MAX(TO_DATE(Fecha_comienzo, 'DD/MM/YYYY'))
+FROM (
+    SELECT Promocion, Fecha_comienzo FROM clase_1
+    UNION
+    SELECT Promocion, Fecha_comienzo FROM clase_2
+    UNION
+    SELECT Promocion, Fecha_comienzo FROM clase_3
+    UNION
+    SELECT Promocion, Fecha_comienzo FROM clase_4
+    UNION
+    SELECT Promocion, NULL AS Fecha_comienzo FROM claustro 
+) p_todas
 WHERE Promocion IS NOT NULL
-ON CONFLICT (Promocion) DO NOTHING;
-
-INSERT INTO Promocion (Promocion)
-SELECT DISTINCT Promocion
-FROM clase_1
-WHERE Promocion IS NOT NULL
-ON CONFLICT (Promocion) DO NOTHING;
-
-INSERT INTO Promocion (Promocion)
-SELECT DISTINCT Promocion
-FROM clase_2
-WHERE Promocion IS NOT NULL
-ON CONFLICT (Promocion) DO NOTHING;
-
-INSERT INTO Promocion (Promocion)
-SELECT DISTINCT Promocion
-FROM clase_3
-WHERE Promocion IS NOT NULL
-ON CONFLICT (Promocion) DO NOTHING;
-
-INSERT INTO Promocion (Promocion)
-SELECT DISTINCT Promocion
-FROM clase_4
-WHERE Promocion IS NOT NULL
+GROUP BY Promocion
 ON CONFLICT (Promocion) DO NOTHING;
 
 select * from Promocion;
@@ -343,27 +331,22 @@ CREATE SEQUENCE IF NOT EXISTS edicion_id_seq START 1;
 CREATE TABLE IF NOT EXISTS Edicion (
     id_edicion VARCHAR(10) PRIMARY KEY
         DEFAULT ('e' || nextval('edicion_id_seq')),
-    Fecha_comienzo DATE,
     id_campus VARCHAR(10) REFERENCES Campus(id_campus),
     id_promocion VARCHAR(10) REFERENCES Promocion(id_promocion),
     id_vertical VARCHAR(10) REFERENCES Vertical(id_vertical),
     id_modalidad VARCHAR(10) REFERENCES Modalidad(id_modalidad)
 );
 
---Las combinaciones de Fecha_comienzo,id_campus e id_promocion que no tenga asociadas id_vertical y id_modalidad
---   se les asociará unas con todas las combinaciones de id_vertical e id_modalidad
---Al usar UNION eliminamos las filas duplicadas entre ellas antes de continuar
---Insertamos todas las combinaciones posibles que se pueden dar entre estos atributos
-INSERT INTO Edicion (Fecha_comienzo, id_campus, id_promocion, id_vertical, id_modalidad)
-SELECT DISTINCT TO_DATE(c_todas.Fecha_comienzo, 'DD/MM/YYYY'), ca.id_campus, p.id_promocion, v.id_vertical, m.id_modalidad
+INSERT INTO Edicion (id_campus, id_promocion, id_vertical, id_modalidad)
+SELECT DISTINCT ca.id_campus, p.id_promocion, v.id_vertical, m.id_modalidad
 FROM (
-    SELECT Fecha_comienzo, Campus, Promocion FROM clase_1
+    SELECT Campus, Promocion FROM clase_1
     UNION
-    SELECT Fecha_comienzo, Campus, Promocion FROM clase_2
+    SELECT Campus, Promocion FROM clase_2
     UNION
-    SELECT Fecha_comienzo, Campus, Promocion FROM clase_3
+    SELECT Campus, Promocion FROM clase_3
     UNION
-    SELECT Fecha_comienzo, Campus, Promocion FROM clase_4
+    SELECT Campus, Promocion FROM clase_4
 ) c_todas
 LEFT JOIN Campus ca 
     ON c_todas.Campus = ca.Campus
@@ -378,6 +361,7 @@ LEFT JOIN Modalidad m
     ON cl.Modalidad = m.Modalidad;
 
 select * from Edicion;
+
 
 
 ----------------CREACION TABLA E INSERCION EN TABLA INSCRIPCION-----------------------
@@ -402,13 +386,13 @@ FROM (
     UNION
     SELECT Nombre, Campus, Promocion FROM claustro 
     WHERE Nombre IS NOT NULL
-) c_todas
+) clases
 JOIN Persona per 
-    ON c_todas.Nombre = per.Nombre
+    ON clases.Nombre = per.Nombre
 JOIN Campus ca 
-    ON c_todas.Campus = ca.Campus
+    ON clases.Campus = ca.Campus
 JOIN Promocion p 
-    ON c_todas.Promocion = p.Promocion
+    ON clases.Promocion = p.Promocion
 JOIN Edicion ed 
     ON ca.id_campus = ed.id_campus 
    AND p.id_promocion = ed.id_promocion;
@@ -416,7 +400,70 @@ JOIN Edicion ed
 select * from Inscripcion;
 
 
+----------------CREACION TABLA E INSERCION EN TABLA PROYECTO-----------------------
+CREATE SEQUENCE IF NOT EXISTS proyecto_id_seq START 1;
+CREATE TABLE IF NOT EXISTS Proyecto (
+    id_proyecto VARCHAR(10) PRIMARY KEY
+        DEFAULT ('pro' || nextval('proyecto_id_seq')),
+    nombre_proyecto VARCHAR(150) UNIQUE,
+    id_vertical VARCHAR(10) REFERENCES Vertical(id_vertical)
+);
 
+INSERT INTO Proyecto (nombre_proyecto, id_vertical)
+SELECT temp.nombre_proyecto, v.id_vertical
+FROM (
+    VALUES 
+        ('Proyecto_HLF'),
+        ('Proyecto_EDA'),
+        ('Proyecto_BBDD'),
+        ('Proyecto_ML'),
+        ('Proyecto_Deployment')
+) AS temp(nombre_proyecto)
+LEFT JOIN Vertical v 
+    ON v.Vertical = 'Data Science'
+ON CONFLICT (nombre_proyecto) DO NOTHING;
+
+select * from Proyecto;
+
+
+----------------CREACION TABLA E INSERCION EN TABLA CALIFICACION-----------------------
+CREATE SEQUENCE IF NOT EXISTS calificacion_id_seq START 1;
+CREATE TABLE IF NOT EXISTS Calificacion (
+    id_calificacion VARCHAR(10) PRIMARY KEY
+        DEFAULT ('cal' || nextval('calificacion_id_seq')),
+    id_persona VARCHAR(10) REFERENCES Persona(id_persona),
+    id_proyecto VARCHAR(10) REFERENCES Proyecto(id_proyecto),
+    calificacion VARCHAR(50)
+);
+
+WITH clases AS (
+    SELECT Nombre, Proyecto_HLF, Proyecto_EDA, Proyecto_BBDD, Proyecto_ML, Proyecto_Deployment FROM clase_1
+    UNION
+    SELECT Nombre, Proyecto_HLF, Proyecto_EDA, Proyecto_BBDD, Proyecto_ML, Proyecto_Deployment FROM clase_2
+    UNION
+    SELECT Nombre, Proyecto_HLF, Proyecto_EDA, Proyecto_BBDD, Proyecto_ML, Proyecto_Deployment FROM clase_3
+    UNION
+    SELECT Nombre, Proyecto_HLF, Proyecto_EDA, Proyecto_BBDD, Proyecto_ML, Proyecto_Deployment FROM clase_4
+),
+proyectos AS (
+    SELECT Nombre, 'Proyecto_HLF' AS nombre_proyecto, Proyecto_HLF AS nota FROM clases
+    UNION
+    SELECT Nombre, 'Proyecto_EDA' AS nombre_proyecto, Proyecto_EDA AS nota FROM clases
+    UNION
+    SELECT Nombre, 'Proyecto_BBDD' AS nombre_proyecto, Proyecto_BBDD AS nota FROM clases
+    UNION
+    SELECT Nombre, 'Proyecto_ML' AS nombre_proyecto, Proyecto_ML AS nota FROM clases
+    UNION
+    SELECT Nombre, 'Proyecto_Deployment' AS nombre_proyecto, Proyecto_Deployment AS nota FROM clases
+)
+INSERT INTO Calificacion (id_persona, id_proyecto, calificacion)
+SELECT p.id_persona, pro.id_proyecto, pp.nota
+FROM proyectos pp
+JOIN Persona p 
+    ON pp.Nombre = p.Nombre
+JOIN Proyecto pro 
+    ON pp.nombre_proyecto = pro.nombre_proyecto
+WHERE pp.nota IS NOT NULL AND pp.nota <> '';
 
 
 
@@ -495,4 +542,98 @@ LEFT JOIN Vertical v
     ON cl.Vertical = v.Vertical
 LEFT JOIN Modalidad m
     ON cl.Modalidad = m.Modalidad;
+*/
+
+
+
+/*
+CREATE SEQUENCE IF NOT EXISTS promocion_id_seq START 1;
+CREATE TABLE IF NOT EXISTS Promocion (
+    id_promocion VARCHAR(10) PRIMARY KEY
+        DEFAULT ('pr' || nextval('promocion_id_seq')),
+    Promocion VARCHAR(150) UNIQUE
+);
+
+INSERT INTO Promocion (Promocion)
+SELECT DISTINCT Promocion
+FROM claustro
+WHERE Promocion IS NOT NULL
+ON CONFLICT (Promocion) DO NOTHING;
+
+INSERT INTO Promocion (Promocion)
+SELECT DISTINCT Promocion
+FROM clase_1
+WHERE Promocion IS NOT NULL
+ON CONFLICT (Promocion) DO NOTHING;
+
+INSERT INTO Promocion (Promocion)
+SELECT DISTINCT Promocion
+FROM clase_2
+WHERE Promocion IS NOT NULL
+ON CONFLICT (Promocion) DO NOTHING;
+
+INSERT INTO Promocion (Promocion)
+SELECT DISTINCT Promocion
+FROM clase_3
+WHERE Promocion IS NOT NULL
+ON CONFLICT (Promocion) DO NOTHING;
+
+INSERT INTO Promocion (Promocion)
+SELECT DISTINCT Promocion
+FROM clase_4
+WHERE Promocion IS NOT NULL
+ON CONFLICT (Promocion) DO NOTHING;
+*/
+
+/*
+CREATE SEQUENCE IF NOT EXISTS edicion_id_seq START 1;
+CREATE TABLE IF NOT EXISTS Edicion (
+    id_edicion VARCHAR(10) PRIMARY KEY
+        DEFAULT ('e' || nextval('edicion_id_seq')),
+    Fecha_comienzo DATE,
+    id_campus VARCHAR(10) REFERENCES Campus(id_campus),
+    id_promocion VARCHAR(10) REFERENCES Promocion(id_promocion),
+    id_vertical VARCHAR(10) REFERENCES Vertical(id_vertical),
+    id_modalidad VARCHAR(10) REFERENCES Modalidad(id_modalidad)
+);
+
+--Las combinaciones de Fecha_comienzo,id_campus e id_promocion que no tenga asociadas id_vertical y id_modalidad
+--   se les asociará unas con todas las combinaciones de id_vertical e id_modalidad
+--Al usar UNION eliminamos las filas duplicadas entre ellas antes de continuar
+--Insertamos todas las combinaciones posibles que se pueden dar entre estos atributos
+INSERT INTO Edicion (Fecha_comienzo, id_campus, id_promocion, id_vertical, id_modalidad)
+SELECT DISTINCT TO_DATE(c_todas.Fecha_comienzo, 'DD/MM/YYYY'), ca.id_campus, p.id_promocion, v.id_vertical, m.id_modalidad
+FROM (
+    SELECT Fecha_comienzo, Campus, Promocion FROM clase_1
+    UNION
+    SELECT Fecha_comienzo, Campus, Promocion FROM clase_2
+    UNION
+    SELECT Fecha_comienzo, Campus, Promocion FROM clase_3
+    UNION
+    SELECT Fecha_comienzo, Campus, Promocion FROM clase_4
+) c_todas
+LEFT JOIN Campus ca 
+    ON c_todas.Campus = ca.Campus
+LEFT JOIN Promocion p 
+    ON c_todas.Promocion = p.Promocion
+LEFT JOIN claustro cl 
+    ON c_todas.Campus = cl.Campus 
+   AND c_todas.Promocion = cl.Promocion
+LEFT JOIN Vertical v 
+    ON cl.Vertical = v.Vertical
+LEFT JOIN Modalidad m 
+    ON cl.Modalidad = m.Modalidad;
+*/
+
+/*
+CREATE SEQUENCE IF NOT EXISTS proyecto_id_seq START 1;
+CREATE TABLE IF NOT EXISTS Proyecto (
+    id_proyecto VARCHAR(10) PRIMARY KEY
+        DEFAULT ('pro' || nextval('proyecto_id_seq')),
+    nombre_proyecto VARCHAR(150) UNIQUE
+);
+
+INSERT INTO Proyecto (nombre_proyecto)
+VALUES ('Proyecto_HLF'),('Proyecto_EDA'),('Proyecto_BBDD'),('Proyecto_ML'),('Proyecto_Deployment')
+ON CONFLICT (nombre_proyecto) DO NOTHING;
 */
